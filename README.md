@@ -6,7 +6,7 @@ This repository is organized to reflect both the **type of analytics** and the *
 
 ---
 
-## 📁 Folder Structure
+## Folder Structure
 Data Analytics/
 ├── Data Science Project in Python/
 ├── Data Science Project in R/
@@ -35,7 +35,7 @@ Data Analytics/
 
 ---
 
-##  Purpose
+## Purpose
 
 This portfolio is intended to:
 - Showcase a range of data analytics skills
@@ -45,7 +45,7 @@ This portfolio is intended to:
 
 ---
 
-##  How to Use
+## How to Use
 
 Each subfolder is a standalone project. To explore:
 1. Navigate into any project folder
@@ -54,7 +54,7 @@ Each subfolder is a standalone project. To explore:
 
 ---
 
-## 📬 Contact
+## Contact
 
 For questions, feedback or collaboration:
 - 📧 Email: omarieben7@gmail.com
