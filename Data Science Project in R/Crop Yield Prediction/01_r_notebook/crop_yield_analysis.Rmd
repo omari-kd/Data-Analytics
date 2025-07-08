@@ -1,0 +1,601 @@
+---
+title: "Crop Yield Prediction"
+output: html_notebook
+---
+
+**Overview**
+
+::: {style="text-align: justify"}
+Crop yield is influenced by several factors, including temperature, NPK (Nitrogen, Phosphorus, Potassium) levels in the soil and fertilizer application. Optimal Temperature ranges vary depending on the crop, but generally, excessive heat or cold can negatively impact growth and yield.
+
+NPK levels play a crucial role in plant nutrition, with nitrogen promoting vegetative growth, Phosphorus supporting root development and flowering and Potassium enhancing overall plant health and disease resistance.
+
+Fertilizer application can improve crop yield by replenishing essential nutrients in the soil, but its important to use the right type and amount of fertilizer for the specific crop and soil conditions.
+:::
+
+**Data Preparation**
+
+::: {style="text-align: justify"}
+```{r}
+# Load library
+library(readxl)
+library(dplyr)
+library(janitor)
+library(naniar)
+library(ggplot2)
+library(plotly)
+library(tidyr)
+```
+
+```{r}
+# Import data 
+data <- read_excel("./00_raw_data/crop yield data sheet.xlsx")
+```
+
+```{r}
+# Rename column names
+data <- data %>% rename(`Rainfall (mm)` = `Rain Fall (mm)`, 'Yield (Q/acre)' = `Yeild (Q/acre)`, `Temperature` = Temperatue)
+```
+
+```{r}
+# Clean column names
+data <- data %>% clean_names()
+```
+
+```{r}
+# Check for NAs
+colnames(data)[apply(data, 2, anyNA)]
+```
+
+```{r}
+# Check the structure of the data
+str(data)
+```
+
+```{r}
+# Convert the temperature to numeric
+data$temperature <- as.numeric(data$temperature, data, na.rm=T)
+```
+
+#### **Handling Missing Data**
+
+A threshold was defined to do know the percentage of missing data.
+
+```{r}
+# Calculate the NA percentage per column
+na_percent <- colSums(is.na(data)) / nrow(data) * 100
+
+# Filter columns above a certain threshold
+threshold <- 30
+
+high_na_columns <- na_percent[na_percent > threshold]
+
+print(high_na_columns)
+print(na_percent)
+```
+
+The high_na_columns returned named numeric(0), which means no column have more than 30% missing values. The full na_percent vector shows all columns have around 9.17% or less NA values.\
+\
+**Data Visualisation on Missing Data**
+
+```{r}
+# Visualise missing Na's using naniar package 
+gg_miss_var(data, show_pct = T)
+```
+
+```{r}
+# Using visdat to show missing data 
+library(visdat)
+
+# Visualise the structure and missing values
+vis_miss(data)
+```
+
+```{r}
+# Using manual plot to visualise data
+na_percent <- colSums(is.na(data)) / nrow(data) * 100
+
+na_df <- data.frame(column = names(na_percent), na_percent = na_percent)
+
+ggplot(na_df, aes(x = reorder(column, -na_percent), y = na_percent)) +
+  geom_col(fill = "tomato") +
+  labs(title = "Percentage of Missing Data per Column", x= "Column", y="Missing Data (%)") + 
+  theme_minimal() + 
+  coord_flip()
+```
+
+The visualisations shows the percentage of missing values for each variable in the dataset. However, the visualisations alone cannot directly determine whether the data is Missing Completely at Random (MCAR), Missing at Random (MAR) or Missing Not at Random (MAR). To determine the missing data mechanism, statistical tests and analyses were performed.
+
+```{r}
+library(MissMech)
+
+# Ensure all data is numeric
+numeric_data <- data[sapply(data, is.numeric)]
+
+# Run the test 
+TestMCARNormality(numeric_data)
+
+# Confirm which rows are actually missing
+which(rowSums(is.na(data)) == 7)
+```
+
+The result from TestMCARNormality indicates more than one missing data pattern should be present, meaning that only one missing data pattern exists in the dataset, which confirms the data visualisations of missing data. Using the "which" function, exactly 10 row numbers are seen, confirming same rows, same variables = 1 pattern. It can reasonably be assume MCAR. The practical choice is to use listwise deletion (the missing data is a small amount) or multiple imputation using missForest (Random Forest Imputation)
+
+```{r}
+# library(missForest)
+
+# Keep both numeric and factor columns
+# mixed_data <- data[sapply(data, function(x) is.numeric(x) || is.factor(x))]
+
+# The data structure has been checked to ensure columns are numeric
+# Remove fully missing rows first 
+# numeric_data <- numeric_data[rowSums(is.na(numeric_data)) <ncol(numeric_data),]
+
+# numeric_data <- as.data.frame(numeric_data)
+
+# Run imputation
+# imputed_data <- missForest(numeric_data)
+
+# data_filled <-imputed_data$ximp
+```
+
+Using listwise deletion approach
+
+```{r}
+clean_data <- na.omit(data)
+```
+:::
+
+**Exploratory Data Analysis**
+
+::: {style="text-align: justify"}
+**Summary Statistics of Yield**
+
+```{r}
+summary(clean_data$yield_q_acre)
+```
+
+The minimum and maximum yield are 5.5 and 12 q/acre respectively. 25% of the yield (1st quartile) is below 7 q/acre and 75% of the yield (3rd quartile) is below 11 q/acre or 25% of the yield is above 11 q/acre, whilst the average yield is 9 q/acre.
+
+The data distribution is slightly positively skewed from the comparison values of the median and mean.
+
+**Summary Statistics of Rainfall**
+
+```{r}
+summary(clean_data$rainfall_mm)
+```
+
+The minimum and maximum rainfall are 400 and 1300 mm respectively. 25% of the rainfall (1st quartile) is below 450 mm and 75% of the rainfall (3rd quartile) is below 1237 mm, whilst the average rainfall is 849 mm.
+
+The rainfall distribution is negatively skewed from the comparison values of the median and mean.
+
+**Data Visualisation of Yield vs Rainfall Using Scatter Plot**
+
+```{r message=F}
+ggplot(data = clean_data, mapping = aes(x = rainfall_mm, y = yield_q_acre)) +
+  geom_point(color = 'darkblue') +
+  geom_smooth(method = 'lm', se = FALSE, color ="red") +
+  labs(title = "Yield vs Rainfall", x = "Rainfall (mm)", y = "Yield (Q/acre)")+
+  theme_minimal()
+```
+
+**Data Visualisation of Yield vs Temperature Using Scatter Plot**
+
+```{r message=F}
+ggplot(data = clean_data, mapping = aes(x = temperature, y = yield_q_acre)) +
+  geom_point(color = "darkblue") +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = " Yield vs Temperature", x = "Temperature", y = "Yield (Q/acre)" ) +
+  theme_minimal()
+```
+
+\
+**Data Visualisation of Yield by Rainfall and Temperature**
+
+```{r}
+ggplot(data = clean_data, mapping = aes(x = rainfall_mm, y = yield_q_acre, color = temperature)) +
+  geom_point(size = 3) +
+  labs(title = "Yield vs Rainfall (Coloured by Temperature)", x = "Rainfall (mm)", y = "Yield (Q/acre)") +
+  scale_color_gradient(low = "blue", high = "red") +
+  theme_minimal()
+```
+
+\
+\
+**Interactive Visualisation using plotly**
+
+```{r message=FALSE}
+ggplot(data = clean_data, mapping = aes(x = rainfall_mm, y = yield_q_acre, color = temperature)) + 
+           geom_point() +
+            geom_smooth(method = "lm", se = FALSE, color = "black")+
+           theme_minimal()
+```
+
+Since fertilizer has many unique values but is not fully continuous (like 50, 52, 55...) it's perfect for boxplot analysis and line plot analysis.
+
+**Boxplot of Yield by Fertilizer**
+
+```{r}
+ggplot(clean_data, aes(x = as.factor(fertilizer), y = yield_q_acre)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Crop Yield by Fertilizer Level", 
+       x = "Fertilizer", y = "Yield (Q/acre)"
+       ) + theme_minimal()
+```
+
+\
+**Line Plot of Mean Yield vs Fertilizer**
+
+```{r}
+average_yield <- clean_data %>% 
+  group_by(fertilizer) %>% 
+  summarise(mean_yield = mean(yield_q_acre))
+
+
+  ggplotly(ggplot(data = average_yield, mapping = aes(x = fertilizer, y =mean_yield)) + 
+  geom_line(color = "forestgreen") +
+  geom_point( size = 2) + 
+  labs(title = "Average Yield by Fertilizer", x = "Fertilizer", y = "Mean Yield (Q/acre)") + theme_minimal())
+```
+
+\
+**Scatter Plot of Yield by Fertilizer and Rainfall**
+
+```{r}
+ggplot(data = clean_data, mapping = aes(x = fertilizer, y = yield_q_acre, color = rainfall_mm)) + geom_point(size = 3) + 
+  labs(title = "Yield by Fertilizer and Rainfall", x = "Fertilizer", y = "Yield (Q/acre)") +
+  scale_color_gradient(low = "lightblue", high = "darkblue") +
+  theme_minimal()
+```
+
+**Analysis of Yield by Macro-nutrients (Nitrogen (N), Phosphorus (P), Potassium (K)**
+
+Macro-nutrients are essential mineral elements that plants need in relatively large amounts for healthy growth and seed production. The primary macro-nutrients are **nitrogen (N)**, **phosphorus (P)** and **potassium (K)**, often represented as **NPK** on fertilizer labels. Nitrogen is important for leaf and stem growth, chlorophyll production and overall plant vigour. Phosphorus is important for root development, flowering, fruiting and seed formation. Potassium is essential for overall plant health, disease resistance and fruit quality.
+
+```{r}
+average_yield_nutrients <- clean_data %>% 
+  group_by(nitrogen_n, phosphorus_p, potassium_k) %>% 
+  summarise(average_yield_q_acre = mean(yield_q_acre, .groups = "drop"))
+
+plot_ly(
+  data = average_yield_nutrients,
+  x = ~nitrogen_n,
+  y = ~phosphorus_p,
+  z = ~potassium_k,
+  size = ~average_yield_q_acre,
+  type = 'scatter3d',
+  mode = 'markers',
+  marker = list(sizemode = 'diameter', color = ~average_yield, colorscale = 'Viridis')
+)
+
+ggplotly (ggplot(average_yield_nutrients, aes(x = nitrogen_n, y = phosphorus_p, size = average_yield_q_acre, color = potassium_k)) +
+  geom_point(alpha = 0.7) +
+  scale_size_continuous(range = c(2, 10)) +
+  labs(title = "Yield by N, P (Bubble = Yield, Color = K)",
+       x = "Nitrogen (N)", y = "Phosphorus (P)", size = "Avg Yield", color = "Potassium (K)") +
+  theme_minimal())
+
+
+
+ggplotly (ggplot(average_yield_nutrients, aes(x = nitrogen_n, y = phosphorus_p, fill = average_yield_q_acre)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c() +
+  labs(title = "Average Yield by Nitrogen and Phosphorus",
+       x = "Nitrogen (N)", y = "Phosphorus (P)", fill = "Avg Yield") +
+  theme_minimal())
+
+```
+
+**Diminishing Returns in Fertilizer**
+
+It is the idea that as you keep adding more fertilizer. the increase in yield gets smaller and smaller. At a point adding more might even reduce yield due to soil toxicity, soil imbalance etc.
+
+Diminishing returns in R can be achieved using the quadratic model:
+
+Yield=β0​+β1​⋅Fertilizer+β2​⋅Fertilizer2+ other terms
+
+If `β2` is **negative**, it confirms diminishing returns (a concave curve 📈➡️📉)
+
+```{r}
+# Fit model with Fertilizer squared (quadratic term)
+model_full <- lm(yield_q_acre ~ fertilizer + I(fertilizer^2) + rainfall_mm + nitrogen_n + phosphorus_p + potassium_k, data = clean_data)
+
+
+# summary to check the sign and significance of fertilizer^2 
+summary(model_full)
+```
+
+**Visualise the curve**
+
+```{r}
+
+# Plot actual data points
+ggplot(clean_data, aes(x = fertilizer, y = yield_q_acre)) +
+  geom_point(color = "darkgreen", alpha = 0.6) +
+  stat_smooth(method = "lm", formula = y ~ x + I(x^2), color = "blue", size = 1.2) +
+  labs(title = "Diminishing Returns of Fertilizer",
+       x = "Fertilizer (kg/acre?)",
+       y = "Yield (q/acre)") +
+  theme_minimal()
+
+```
+
+**Visualise (Fertilizer vs. Yield with control vars )**
+
+Plotting the relationship between fertilizer and yield while holding other variables constant (at their mean)
+
+```{r}
+# Create a sequence of fertilizer values
+fert_range <- seq(min(clean_data$fertilizer), max(clean_data$fertilizer), length.out = 100)
+
+# Hold other variables at their mean
+rain_mean <- mean(clean_data$rainfall_mm)
+N_mean <- mean(clean_data$nitrogen_n)
+P_mean <- mean(clean_data$phosphorus_p)
+K_mean <- mean(clean_data$potassium_k)
+
+# Create new data frame for prediction
+# Create prediction data frame with correct column names
+pred_data <- data.frame(
+  fertilizer = fert_range,
+  rainfall_mm = rain_mean,
+  nitrogen_n = N_mean,
+  phosphorus_p = P_mean,
+  potassium_k = K_mean
+)
+
+
+# Predict yield
+pred_data$Pred_Yield <- predict(model_full, newdata = pred_data)
+
+
+# Plot
+ggplot() +
+  geom_point(data = clean_data, aes(x = fertilizer, y = yield_q_acre), alpha = 0.5, color = "gray") +
+  geom_line(data = pred_data, aes(x = fertilizer, y = Pred_Yield), color = "blue", size = 1.2) +
+  labs(title = "Diminishing Returns of Fertilizer (controlling for Rainfall & NPK)",
+       x = "Fertilizer",
+       y = "Predicted Yield") +
+  theme_minimal()
+
+```
+
+**Confirmatory Data Analysis and Modeling**\
+**Linear Regression**
+
+```{r}
+lm_model <- lm(yield_q_acre ~ rainfall_mm + temperature + fertilizer + nitrogen_n + phosphorus_p + potassium_k, data = clean_data)
+
+summary(lm_model)
+```
+
+**Regression with interaction term in R**
+
+```{r}
+model2 <- lm(yield_q_acre ~ rainfall_mm * fertilizer + temperature + nitrogen_n + phosphorus_p + potassium_k, data = clean_data)
+
+summary(model2)
+```
+
+**Diagnostic Plots**
+
+```{r}
+# Diagnostic plots
+par(mfrow = c(2, 2))
+plot(model2)
+```
+
+Rainfall and Fertilizer may only show their power under non-linear or conditional effects (e.g., diminishing returns, thresholds). This is exactly where a Decision Tree or Random Forest would shine; it doesn't assume additive or linear relationships.
+
+**Decision Tree Model**
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+# Fit the decsion tree 
+tree_model <- rpart(formula = yield_q_acre ~ rainfall_mm + temperature + fertilizer + nitrogen_n + phosphorus_p + potassium_k, data = clean_data, method = "anova")
+
+# Visualise the tree 
+rpart.plot(x = tree_model, type = 2, fallen.leaves = TRUE, extra = 101)
+```
+
+The root node of the decision is the first split and shows the most influential feature in predicting crop yield. In this model, rainfall is at the root, meaning it has the highest information gain and is the most important factor in determining crop yield. The subsequent splits provide additional insights into how different combination of features influence the prediction of crop yield.
+
+**Random Forest**
+
+```{r}
+library(randomForest)
+
+# Fit the random forest model 
+rf_model <- randomForest(formula = yield_q_acre ~ rainfall_mm + temperature + fertilizer + nitrogen_n + phosphorus_p + potassium_k, data = clean_data, importance = TRUE, ntree = 500)
+
+# View variable importance 
+importance(rf_model)
+varImpPlot(rf_model)
+```
+
+**Variable Important Metrics**
+
+**%IncMSE:** This tells how much the mean squared error increases when that variable is permuted; higher means more important.
+
+**IncNodePurity:** Measures how much a variable improves node purity (i.e., splits that reduce variance); also higher means more important.
+
+Based on the output, temperature is the most impactful predictor of crop yield. Rainfall and Potassium are also strong predictors. Fertilizer has the least influence in the randomForest model.\
+
+**For better visualisation than the VarImpPlot()**
+
+```{r}
+# Tidy up the variable importance
+var_imp <- importance(rf_model) %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column(var = "Variable") %>%
+  arrange(desc(`%IncMSE`))
+
+# Round for readability
+var_imp <- var_imp %>%
+  mutate(across(-Variable, round, 2))
+
+print(var_imp)
+
+
+# Plot variable importance using %IncMSE
+ggplot(var_imp, aes(x = reorder(Variable, `%IncMSE`), y = `%IncMSE`)) +
+  geom_col(fill = "#2c7fb8") +
+  coord_flip() +
+  labs(
+    title = "Variable Importance from Random Forest",
+    x = "Variable",
+    y = "% Increase in MSE"
+  ) +
+  theme_minimal()
+
+```
+
+Model Performance Comparison
+
+The model performance will be compared using standard regression metrics:
+
+R2 - R squared
+
+RMSE - Root Mean Squared Error
+
+MAE - Mean Absolute Error
+
+```{r}
+library(Metrics)
+library(caret)
+
+# yield_q_acre is my response variable
+# Get true values 
+actual <- clean_data$yield_q_acre
+
+# Linear regression model 
+pred_lm <- predict(lm_model, newdata = clean_data)
+
+# Decision tree predictions
+pred_tree <- predict(tree_model, newdata = clean_data)
+
+# Random forest prediction
+pred_rf <- predict(rf_model, newdata = clean_data)
+
+
+# --------------------------------------------------
+# CREATE A PERFORMANCE TABLE 
+# --------------------------------------------------
+
+# Function to compute metrics
+get_metrics <- function(actual, predicted) {
+  data.frame(
+    R2 = R2(predicted, actual),
+    RMSE = rmse(actual, predicted),
+    MAE = mae(actual, predicted)
+  )
+}
+
+# Combine all into one table 
+performance_comparison <- rbind(
+  Linear_Regression = get_metrics(actual = actual, predicted = pred_lm),
+  Decision_Tree = get_metrics(actual = actual, predicted = pred_tree),
+  Random_Forest = get_metrics(actual = actual, predicted = pred_rf)
+)
+
+print(performance_comparison)
+```
+
+Higher R2 and lower RMSE/MAE = better performance
+
+```{r}
+performance_comparison$Model <- rownames(performance_comparison)
+performance_long <- pivot_longer(performance_comparison, cols = c(R2, RMSE, MAE), names_to = "Metric", values_to = "Value")
+
+ggplot(performance_long, aes(x = Model, y = Value, fill = Metric)) +
+  geom_col(position = "dodge") +
+  labs(title = "Model Performance Comparison", y = "Metric Value", x = "") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set1")
+```
+
+\
+\
+Using train/test split to validate them properly\
+
+```{r}
+# Split the data into 70% training and 30% testing
+set.seed(123)
+
+split_index <- createDataPartition(clean_data$yield_q_acre, p = 0.7, list = FALSE)
+
+
+train_data <- clean_data[split_index, ]
+test_data  <- clean_data[-split_index, ]
+
+
+# Fit Models on Training Data
+
+# Linear Regression
+lm_model <- lm(yield_q_acre ~ rainfall_mm + temperature + fertilizer + nitrogen_n + phosphorus_p + potassium_k, data = train_data)
+
+# Decision Tree
+tree_model <- rpart(yield_q_acre ~ rainfall_mm + temperature + fertilizer + nitrogen_n + phosphorus_p + potassium_k, data = train_data, method = "anova")
+
+# Random Forest
+rf_model <- randomForest(yield_q_acre ~ rainfall_mm + temperature + fertilizer + nitrogen_n + phosphorus_p + potassium_k, data = train_data, importance = TRUE, ntree = 500)
+
+
+# Predict on Test Set & Evaluate 
+
+# True values
+actual <- test_data$Yield_Q_acre
+
+# Predictions
+pred_lm    <- predict(lm_model, newdata = test_data)
+pred_tree  <- predict(tree_model, newdata = test_data)
+pred_rf    <- predict(rf_model, newdata = test_data)
+
+# Metrics function
+get_metrics <- function(actual, predicted) {
+  data.frame(
+    R2   = R2(predicted, actual),
+    RMSE = rmse(actual, predicted),
+    MAE  = mae(actual, predicted)
+  )
+}
+actual     <- as.numeric(test_data$yield_q_acre)
+pred_lm    <- as.numeric(pred_lm)
+pred_tree  <- as.numeric(pred_tree)
+pred_rf    <- as.numeric(pred_rf)
+
+
+# Combine into one table
+performance_comparison_1 <- rbind(
+  Linear_Regression = get_metrics(actual, pred_lm),
+  Decision_Tree     = get_metrics(actual, pred_tree),
+  Random_Forest     = get_metrics(actual, pred_rf)
+)
+
+print(performance_comparison)
+
+```
+
+Visualise the performance
+
+```{r}
+
+performance_comparison_1$Model <- rownames(performance_comparison_1)
+performance_long <- pivot_longer(performance_comparison_1, cols = c(R2, RMSE, MAE), names_to = "Metric", values_to = "Value")
+
+ggplot(performance_long, aes(x = Model, y = Value, fill = Metric)) +
+  geom_col(position = "dodge") +
+  labs(title = "Model Performance Comparison (Test Set)", y = "Metric Value", x = "") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set1")
+
+```
+
+**Export clean data**
+
+```{r}
+write.csv(x = clean_data, file = "./02_clean_data/clean_data.csv", row.names = F)
+```
+:::

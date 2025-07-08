@@ -1,0 +1,526 @@
+---
+title: "Bank Customer Churn Prediction"
+output: html_notebook
+---
+
+::: {style="text-align: justify"}
+### **Project Overview**
+
+The objective of this project is to analyse the demographics and financial information of bank customers, including factors like age, gender, credit score, country, balance and more, in order to predict whether a customer will leave the bank or not. Customer Churn, the decision of customers to leave a bank can significantly impact the bank's business and profitability. By accurately predicting customer churn, the bank can take proactive measures to retain valuable customers and enhance customer satisfaction.
+
+### **Data Preparation**
+
+```{r include=FALSE}
+# Load libraries
+library(dplyr)
+library(janitor)
+library(ggplot2)
+library(reshape2)
+```
+
+```{r include=FALSE}
+# Load the file 
+df <- read.csv(file = "../00_raw_data/churn.csv")
+```
+
+```{r include=FALSE}
+# Check for duplicates
+sum(duplicated(df))
+```
+
+```{r include=FALSE}
+# Check for missing data
+sum(is.na(df))
+```
+
+```{r include=FALSE}
+# Check the structure of the dataset
+str(df)
+```
+
+```{r include=FALSE}
+# Drop unnecessary columns 
+# df <- select(df, -c(RowNumber))
+ df <- df %>% select(-RowNumber)
+```
+
+```{r include=FALSE}
+# Rename the exited to churn 
+df <- df %>% rename(Churn = Exited)
+```
+
+There were no duplicate entries or missing values in the dataset. The variable *RowNumber* was removed as it was not relevant to the analysis. Additionally, the variable *Exited* was renamed to *Churn* for better interpretation.
+
+### **Descriptive Statistics**
+
+```{r}
+summary(df$Age)
+```
+
+The minimum age is 18 years and the maximum age is 92 years whilst the average age is 39 years. 25% of the age is below 32 years and 25% of the age is above 44 years.
+
+### **Exploratory Data Analysis**
+
+#### **Pie Chart for Customer Churn**
+
+```{r}
+# Convert Churn to a factor
+ df$Churn <- factor(df$Churn, levels = c(0, 1), labels = c("No", "Yes"))
+# df$Churn <- as.factor(df$Churn)
+
+# Summarise data 
+df_summary <- df %>% 
+  count(Churn) %>% 
+  mutate(percent = n / sum(n) * 100, label = paste0(Churn, ": ", round(percent, 2), "%"))
+
+#  Create pie chart
+ggplot(df_summary, aes(x = "", y = n, fill = Churn)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y") +
+  theme_void() +
+  labs(title = "Churn Percentage") +
+  geom_text(aes(label = label), position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values = c("skyblue", "tomato"))
+```
+
+The pie chart illustrates the customer churn distribution. A majority of customers (79.63%) are not likely to churn, represented by the blue segment. 20.37% of the customers are likely to churn, represented by the red segment.
+
+#### **Bar Plot on Gender**
+
+```{r}
+ggplot(data = df, aes(x = Gender, fill = Churn)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Gender Distribution by Churn",
+       x = "Gender", y = "Count") +
+  theme_minimal()+
+  scale_fill_manual(values = c("skyblue", "salmon"))
+```
+
+From the graph, majority of the customers are male. It can be seen that, females are likely to churn compared to males. However, a conclusion cannot be drawn from the gender of the customer regarding customer churn.\
+
+#### **Histogram On Age Distribution**
+
+```{r message=F, warning=F}
+ggplot(df, aes(x = Age, fill = Churn)) +
+  geom_histogram(position = "stack", bins = 30, alpha = 0.6, color = "black") +
+  geom_density(aes(y = ..count..), alpha = 0.2, color = "darkblue", size = 1) +
+  labs(title = "Age Distribution by Churn",
+       x = "Age", y = "Count") +
+  scale_fill_manual(values = c("skyblue", "salmon")) +
+  theme_minimal() 
+
+```
+
+The histogram visualises the age distribution and the churn count of the customers. Majority of the customers are between the age group of 30 to 45 years. The customer churn count is highest between the ages of 40 to 55 years. Ages below 25 years account for the lowest churn count.
+
+From the visualisation, age plays a pivotal role in customer churn, where older adults are more likely to churn as compared to young adults with minimal churn count.
+
+#### **Box plot on Credit Score**
+
+```{r}
+ggplot(data = df, mapping = aes(x = Churn, y = CreditScore, fill = Churn)) +
+  geom_boxplot(stat = "boxplot", position = "dodge2", outliers = TRUE, outlier.colour = "red") +
+  labs(title = "Box Plot on Credit Score", x = "Churn", y = "Credit Score") +
+  theme_minimal() +
+   scale_fill_manual(values = c("skyblue", "tomato"))
+```
+
+The box plot displays the distribution of customers’ credit scores segmented by churn status. The median credit scores for both churned (*Yes*) and retained (*No*) customers are nearly identical, indicating little difference in central tendency. While a few churned customers exhibit notably low credit scores; visible as outliers; these are not representative of the overall group. This suggests that credit score alone is not a strong predictor of customer churn.\
+
+#### **Bar plot on Customer Location**
+
+```{r}
+ggplot(data = df, mapping = aes(x = Geography, fill = Churn)) +
+  geom_bar(stat = "count", position = "dodge", just = 1) +
+  labs(title = "Geography and Churn", x = "Location", y ="Count") +
+  theme_minimal() +
+  scale_fill_manual(values = c("skyblue", "tomato")) 
+```
+
+The graph shows the number of customers from their respective countries along with their churn count. Majority of the customers are from France, followed by Germany and then Spain. The most customers likely to churn are the German customers and French customers. Spanish customers have a relatively low churn.
+
+#### **Bar Plot on Tenure**
+
+```{r}
+ggplot(data = df, mapping = aes(x = Tenure, fill = Churn)) +
+  geom_bar(stat = "count", position = "dodge", just = 1) +
+  labs(title = "Tenure and Churn", x = "Tenure", y = "Count") + 
+  theme_minimal() +
+  scale_fill_manual(values = c("skyblue", "tomato")) +
+    scale_x_continuous(breaks = seq(0, max(df$Tenure, na.rm = TRUE), by = 1))
+```
+
+Tenure refers to the number of years a customer has been with a bank as a client. Majority of the customers in the dataset have a tenure between 1- 9 years, having almost an equal distribution amongst them. From the graph, few customers have a tenure below 1 year and above 9 years.
+
+Customers with tenure 1 to 9 years have a higher churn out compared to customers with tenure below 1 year and above 9 years. This is because customers with low tenure (less than or below 1 year) and customers with high tenure (above 9 years) are more likely to stay loyal to the bank.
+
+#### **Histogram on Bank Balance Distribution**
+
+```{r}
+options(scipen = 999)
+  
+ggplot(data = df, mapping = aes(x = Balance, fill = Churn)) +
+  geom_histogram(position = "stack", bins = 30, alpha = 0.6, colour = "black") +
+  geom_density(aes( y = ..count..), alpha = 0.2, colour = "darkblue", size = 1) +
+  labs(title = "Bank Balance", x = "Bank Balance", y = "Count") + 
+  scale_fill_manual(values = c("skyblue", "tomato")) +
+  theme_minimal() +
+   scale_x_continuous(breaks = seq(0, max(df$Balance, na.rm = TRUE), by = 100000))
+```
+
+This graph customer's bank balance. Customer's with zero bank balance are more likely to leave the bank followed by customers with bank balance between 100000 to 150000.
+
+#### **Bar plot of products purchased**
+
+```{r}
+ggplot(data = df, mapping = aes(x = NumOfProducts, fill = Churn)) + 
+  geom_bar(stat = "count", position = "stack", width = 0.5) + 
+  labs(title = "Purchased Product", x = "Purchased Product", y = "Count") +
+  theme_minimal() +
+  scale_fill_manual(values = c("skyblue", "tomato"))
+```
+
+The chart illustrates the total number of products purchased by customers, categorized into four groups (1 to 4), along with their corresponding churn status. Customers who did not churn are shown in sky blue, while those who churned are represented in red. ategory 1 has the highest number of customers, followed by categories 2 and 3, while category 4 shows no customer activity. Notably, the highest churn count is observed among customers who purchased only one product, whereas category 4 has the lowest churn count, likely due to having no customers in that group.\
+
+#### **Bar Plot of Customers With/Without Credit Card**
+
+```{r}
+# Convert HasCrCard to a factor 
+df$HasCrCard <- as.factor(df$HasCrCard)
+
+ggplot(data = df, mapping = aes(x = HasCrCard, fill = Churn)) + 
+  geom_bar( position = "stack", width = 0.5) +
+  labs(title = "Customers With/Without Credit Card", x = "Credit Card", y = "Count") +
+  theme_minimal() +
+  scale_fill_manual(values = c("skyblue", "tomato"))
+```
+
+The chart shows the total number of credit cards, categorized into 2 groups (0 = No & 1 = Yes). Majority of the customers have credit cards, which is represented by 1 and \~ 3000 customers do not have credit cards which is represented by 0. The number of customers leaving the bank are more than the those without credit cards.
+
+#### **Bar Plot on Active Members**
+
+```{r}
+df$IsActiveMember <- as.factor(df$IsActiveMember)
+
+ggplot(data = df, mapping = aes(x = IsActiveMember, fill = Churn)) + 
+  geom_bar(position = "dodge") +
+  labs(title = "Active Members", x = "Active Members", y = "Count") +
+  theme_minimal() +
+  scale_fill_manual(values = c("skyblue","tomato"))
+```
+
+The chart shows that both active and inactive customers are well represented. While the number of active customers slightly exceeds that of inactive ones, the difference is not substantial. Those likely to leave are the inactive ones, which informs the bank to improve their services to retain them.
+
+#### **Estimated Salary**
+
+```{r}
+ggplot(data = df, mapping = aes(x = EstimatedSalary, fill = Churn)) + 
+  geom_histogram(position = "stack", bins = 30, alpha = 0.6, colour = "black") + 
+  labs(title =  "Estimated Salary", x = "Estimated Salary", y = "Count") +
+  theme_minimal() + 
+  scale_fill_manual(values = c("skyblue", "tomato"))
+```
+
+The chart displays the distribution of customers' estimated salaries alongside their churn status. The churn and non-churn groups appear to be evenly spread across the salary range, indicating no strong relationship between estimated salary and churn. This suggests that estimated salary is not a reliable predictor of customer churn.
+
+#### **Correlation Matrix (Heat Map)**
+
+```{r warning=False}
+# Convert Churn to numeric 
+df$Churn <- ifelse(df$Churn == "Yes", 1, 0)
+
+# Convert HasCrCard to numeric 
+df$HasCrCard <- as.numeric(df$HasCrCard)
+
+# Convert CreditScore to numeric
+df$CreditScore <- as.numeric(df$CreditScore)
+
+# Convert Age to numeric
+df$Age <- as.numeric(df$Age)
+df$Gender <- as.numeric(factor(df$Gender))
+df$Geography <- as.numeric(factor(df$Geography))
+
+
+# Select only numeric columns for correlation
+numeric_df <- df %>% select(where(is.numeric))
+
+# Remove CustomerID
+numeric_df <- numeric_df %>%  select(-CustomerId)
+
+
+# Compute correlation matrix 
+cor_matrix <- cor(numeric_df, use = "complete.obs")
+
+# Melt correlation matrix for ggplot2
+melted_cor <- melt(cor_matrix)
+
+# Plot heatmap
+ggplot(data = melted_cor, mapping = aes(x = Var1, y = Var2, fill = value)) + 
+         geom_tile(color = "white") +
+         geom_text(aes(label = round(value, 2)), size = 3) +
+         scale_fill_gradient2(low = "tomato",high = "steelblue", mid = "white",
+                              midpoint = 0, limit = c(-1,1), space = "Lab", 
+                              name = "Correlation"
+                              ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(title = "Correlation Heatmap", x ="", y="")
+```
+
+### **Predictive Modelling (Machine Learning)**
+
+#### Churn Prediction
+
+Decision Tree Classifier and Random Forest Classifier
+
+#### **Decision Tree Classifier**
+
+```{r}
+# Load libraries 
+library(caret)
+library(rpart)
+library(rpart.plot)
+
+# Data Preprocessing
+# Ensure Churn is a factor (classification)
+df$Churn <- as.factor(df$Churn)
+
+# Remove unnecessary columns 
+df_model <- df %>% select(-CustomerId, - Surname)
+
+# Check the structure of the dataset 
+# str(df_model)
+
+# Ensure categorical variables are of class factor 
+df_model$Geography <- as.factor(df_model$Geography)
+
+df_model$Gender <- as.factor(df_model$Gender)
+
+df_model$HasCrCard <- as.factor(df_model$HasCrCard)
+
+# Check structure 
+# str(df_model)
+
+# Define the control using cross-validation 
+train_control <- trainControl(method = "cv", number = 5)
+
+# Set the grid of parameters to tune 
+# cp = complexity parameter (like pruning)
+grid <- expand.grid(cp = seq(0.001, 0.05, by = 0.005))
+
+# Train the decision tree model using grid search
+set.seed(123)
+model <- train(Churn ~., data = df_model, method = "rpart",  metric = "Accuracy", trControl = train_control,
+               tuneGrid = grid
+               )
+
+print(model)
+
+# Show best tuning parameter 
+print(model$bestTune)
+
+# Plot the performance vs cp values 
+plot(model)
+
+# Visualise the best tree 
+rpart.plot(model$finalModel, main = "Decision Tree for Bank Customer Churn Prediction ")
+```
+
+Key Notes:
+
+**cp(complexity parameter)** controls tree pruning. Smaller values allow larger trees.
+
+A seed is set to control the random number generator. This ensures that the same sequence of "random" numbers is generated each time the code is run, making results reproducible.
+
+**trainControl(method = "cv", number = 5)** sets 5-fold cross validation. Caret package splits the datasets into 5 folds. Trains on 4 folds and tests on the remaining 1, repeating this 5 times. This helps estimate how well the model generalizes (like testing performance). The final model is trained on the entire dataset using the best hyper-parameters found.\
+\
+You can tune other parameters like maxdepth using other packages like rpart2 or rpart.control, but caret's direct support via rpart mostly focuses on cp.
+
+For manually split into training and test sets:
+
+```{r}
+# Create a train/test split (80/20)
+set.seed(123)
+train_index <- createDataPartition(df_model$Churn, p = 0.8, list = FALSE)
+
+train_data <- df_model[train_index,]
+test_data <- df_model[-train_index, ]
+
+
+# Train using only the training set 
+model_tree <- train(
+  Churn ~.,
+  data = train_data,
+  method = "rpart",
+  trControl = trainControl(method = "cv", number = 5),
+  tuneGrid = grid
+)
+
+rpart.plot(model_tree$finalModel, main = "Decision Tree for Bank Customer Churn Prediction ")
+
+
+
+```
+
+The first split is the root node of the decision tree and shows the most influential feature in predicting crop yield. In this model, age is at the root, meaning it has the highest information gain and is the most important factor in determining crop yield.
+
+**Model Evaluation**
+
+```{r}
+# Evaluate on the test set 
+predictions  <- predict(model_tree, newdata = test_data)
+
+# Confusion matrix 
+conf_matrix <- confusionMatrix(predictions, test_data$Churn)
+
+# Convert confusion matrix table to a dataframe 
+cm_df <- as.data.frame(conf_matrix$table)
+
+# Plot the heat map
+ggplot(cm_df, aes(Prediction, Reference, fill = Freq)) + 
+  geom_tile() +
+  geom_text(aes(label = Freq), color = "white", size = 5) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "Confusion Matrix Heatmap", x = "Predicted", y = "Actual") + 
+  theme_minimal()
+
+# Print Accuracy 
+print(paste("Accuracy:", round(conf_matrix$overall['Accuracy'] * 100, 2), "%"))
+print(paste("Sensitivity:", round(conf_matrix$byClass['Sensitivity'], 2)))
+print(paste("Specificity:", round(conf_matrix$byClass['Specificity'], 2)))
+```
+
+#### **Random Forest Classifier**
+
+```{r}
+library(randomForest)
+
+# Ensure the target is a factor 
+# class(df_model$Churn)
+
+set.seed(456)
+train_index_rf <- createDataPartition(df_model$Churn, p = 0.8, list = FALSE)
+
+train_data_rf <- df_model[train_index_rf, ]
+test_data_rf <- df_model[-train_index_rf,]
+
+# Train Random Forest with hyperparameter tuning 
+# Define tuning grid for mtry
+tune_grid <- expand.grid(mtry = c(2, 4, 6, 8))
+
+# Train model
+rf_model <- train(
+  Churn ~ .,
+  data = train_data_rf,
+  method = "rf",
+  trControl = trainControl(method = "cv", number = 5),
+  tuneGrid = tune_grid,
+  importance = TRUE
+)
+
+```
+
+#### Model Evaluation
+
+```{r}
+# Best mtry value
+print(rf_model$bestTune)
+
+# Plot accuracy vs mtry
+plot(rf_model)
+
+# Predict on test data
+rf_predictions <- predict(rf_model, newdata = test_data_rf)
+
+# Confusion matrix
+conf_matrix_rf <- confusionMatrix(rf_predictions, test_data_rf$Churn)
+
+# Print accuracy
+print(paste("Random Forest Accuracy:", round(conf_matrix_rf$overall['Accuracy'] * 100, 2), "%"))
+
+```
+
+**Feature Importance**
+
+```{r}
+varImpPlot(rf_model$finalModel, main = "Variable Importance - Random Forest")
+# importance(rf_model$finalModel)
+```
+
+Mean Decrease in Accuracy measures how much the model's accuracy drops when that variable is randomly permuted. A higher value means the variable is more important for predictive power. More reliable when the focus is about overall predictive contribution.
+
+Mean Decrease in Gini measures how much each variable contributes to reducing node impurity (Gini Index) across all trees. A higher value means the variable contributes more to splitting and separating the classes. Sometimes biased towards variables with more levels (especially in categorical features).
+
+Top features by MeanDecreaseAccuracy are NumofProducts, Age, isActiveMember, Balance and Geography.
+
+```{r include=FALSE}
+# Rank variables in a table (by importance)
+# Extract and arrange variable importance
+importance_df <- as.data.frame(importance(rf_model$finalModel))
+importance_df$Variable <- rownames(importance_df)
+
+# Rank by MeanDecreaseAccuracy
+ranked_by_accuracy <- importance_df %>%
+  arrange(desc(MeanDecreaseAccuracy)) %>%
+  select(Variable, MeanDecreaseAccuracy)
+
+# Rank by MeanDecreaseGini
+ranked_by_gini <- importance_df %>%
+  arrange(desc(MeanDecreaseGini)) %>%
+  select(Variable, MeanDecreaseGini)
+
+# View the tables
+print("Top Variables by Mean Decrease Accuracy:")
+print(ranked_by_accuracy)
+
+print("Top Variables by Mean Decrease Gini:")
+print(ranked_by_gini)
+
+```
+
+```{r include=F}
+# Use ggplot2 to plot and save
+
+# Take top 10 by accuracy
+top10_acc <- ranked_by_accuracy %>% slice(1:10)
+
+# Create and save the plot
+importance_plot <- ggplot(top10_acc, aes(x = reorder(Variable, MeanDecreaseAccuracy), y = MeanDecreaseAccuracy)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 10 Variables by Mean Decrease Accuracy",
+       x = "Variable", y = "Mean Decrease Accuracy") +
+  theme_minimal()
+
+importance_plot
+
+# Save the plot
+ggsave("../03_visualisation/variable_importance_accuracy.png", plot = importance_plot, width = 8, height = 6)
+```
+
+### **Conclusion**
+
+From the analysis conducted, it is evident that the most influential factors contributing to customer churn include:
+
+-   Age
+
+-   Number of Products Held
+
+-   Geography
+
+-   Account Balance
+
+-   Credit Card Ownership
+
+-   Active Membership Status
+
+These variables were consistently ranked as important by both the Decision Tree and Random Forest models, particularly based on their contribution to model accuracy and reduction in node impurity.
+
+In terms of predictive performance:
+
+The **Decision Tree Classifier** achieved an accuracy of **85.79%,** demonstrating reasonable classification capability with interpretable logic.
+
+The **Random Forest Classifie**r outperformed the decision tree, achieving a higher accuracy of **97.3%,** highlighting its strength in handling variable interactions and reducing overfitting.
+
+This suggests that a more complex ensemble model like Random Forest provides better generalization for predicting customer churn in this dataset.
+:::
