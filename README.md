@@ -57,7 +57,7 @@ Each subfolder is a standalone project. To explore:
 ## Contact
 
 For questions, feedback or collaboration:
-- 📧 Email: [Gmail](omarieben7@gmail.com)
+- 📧 Email: [gmail](omarieben7@gmail.com)
 - 🌐 LinkedIn: [linkedin-profile](https://www.linkedin.com/in/omarieben/)
 
 ---
