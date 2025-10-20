@@ -2,6 +2,8 @@
 
 **Data Analyst / BI Specialist Mock Project**
 
+<img width="1277" height="714" alt="Image" src="https://github.com/user-attachments/assets/f00330c9-d717-4f68-944c-a9a7d332b556" />
+
 ## Overview
 
 This project simulates a real-world **E-commerce Data Analyst** role. It integrates mock data from **Amazon**, **Shopify**, and **Ad Spend** platforms to develop an interactive **Power BI dashboard** that tracks revenue, ad performance, and ROI.
@@ -75,7 +77,7 @@ Each dataset uses **Ghana Cedi (₵)** to simulate realistic regional e-commerce
    git clone https://github.com/<your-username>/ecommerce-analytics.git
    ```
 2. Open the `mockdata_notebook.ipynb` notebook and run the Python cleaning steps.
-3. Open `ecommerce_dashboard.pbix` in Power BI.
+3. Open `E-Commerce Dashboard.pbix` in Power BI.
 4. Refresh data connections → Explore the dashboard visuals.
 
 ---
