@@ -74,7 +74,7 @@ Each dataset uses **Ghana Cedi (₵)** to simulate realistic regional e-commerce
    ```bash
    git clone https://github.com/<your-username>/ecommerce-analytics.git
    ```
-2. Open the `data_cleaning.ipynb` notebook and run the Python cleaning steps.
+2. Open the `mockdata_notebook.ipynb` notebook and run the Python cleaning steps.
 3. Open `ecommerce_dashboard.pbix` in Power BI.
 4. Refresh data connections → Explore the dashboard visuals.
 
