@@ -1,0 +1,31 @@
+Order_ID,Date,Product,Category,Units_Sold,Unit_Price_GHS,Revenue_GHS,Discount_GHS,Country
+S2001,2025-01-01,Hoodie,Apparel,5,250,1250,50,Ghana
+S2002,2025-01-02,Mug,Home,20,70,1400,0,Ghana
+S2003,2025-01-03,Cap,Apparel,15,80,1200,20,Ghana
+S2004,2025-01-04,T-Shirt,Apparel,10,150,1500,30,Ghana
+S2005,2025-01-05,Tote Bag,Accessories,8,100,800,10,Ghana
+S2006,2025-01-06,Hoodie,Apparel,5,250,1250,50,Ghana
+S2007,2025-01-07,Mug,Home,20,70,1400,0,Ghana
+S2008,2025-01-08,Cap,Apparel,15,80,1200,20,Ghana
+S2009,2025-01-09,T-Shirt,Apparel,10,150,1500,30,Ghana
+S2010,2025-01-10,Tote Bag,Accessories,8,100,800,10,Ghana
+S2011,2025-01-11,Hoodie,Apparel,5,250,1250,50,Ghana
+S2012,2025-01-12,Mug,Home,20,70,1400,0,Ghana
+S2013,2025-01-13,Cap,Apparel,15,80,1200,20,Ghana
+S2014,2025-01-14,T-Shirt,Apparel,10,150,1500,30,Ghana
+S2015,2025-01-15,Tote Bag,Accessories,8,100,800,10,Ghana
+S2016,2025-01-16,Hoodie,Apparel,5,250,1250,50,Ghana
+S2017,2025-01-17,Mug,Home,20,70,1400,0,Ghana
+S2018,2025-01-18,Cap,Apparel,15,80,1200,20,Ghana
+S2019,2025-01-19,T-Shirt,Apparel,10,150,1500,30,Ghana
+S2020,2025-01-20,Tote Bag,Accessories,8,100,800,10,Ghana
+S2021,2025-01-21,Hoodie,Apparel,5,250,1250,50,Ghana
+S2022,2025-01-22,Mug,Home,20,70,1400,0,Ghana
+S2023,2025-01-23,Cap,Apparel,15,80,1200,20,Ghana
+S2024,2025-01-24,T-Shirt,Apparel,10,150,1500,30,Ghana
+S2025,2025-01-25,Tote Bag,Accessories,8,100,800,10,Ghana
+S2026,2025-01-26,Hoodie,Apparel,5,250,1250,50,Ghana
+S2027,2025-01-27,Mug,Home,20,70,1400,0,Ghana
+S2028,2025-01-28,Cap,Apparel,15,80,1200,20,Ghana
+S2029,2025-01-29,T-Shirt,Apparel,10,150,1500,30,Ghana
+S2030,2025-01-30,Tote Bag,Accessories,8,100,800,10,Ghana
